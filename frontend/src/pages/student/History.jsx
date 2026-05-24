@@ -1,0 +1,254 @@
+import { useEffect, useState } from 'react';
+import { Clock, Star, CheckCircle, X } from 'lucide-react';
+import StudentLayout from '../../components/StudentLayout';
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
+
+function fmtDate(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
+}
+function fmtTime(t) {
+  if (!t) return '—';
+  const [h, m] = t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
+function calcDuration(ti, to) {
+  try {
+    const [ih,im] = ti.split(':').map(Number);
+    const [oh,om] = to.split(':').map(Number);
+    const mins = (oh*60+om)-(ih*60+im);
+    if (mins<=0) return '—';
+    return mins<60 ? `${mins}m` : `${Math.floor(mins/60)}h ${mins%60}m`;
+  } catch { return '—'; }
+}
+
+function StarPicker({ value, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex items-center gap-1">
+      {[1,2,3,4,5].map(i => (
+        <button key={i} type="button"
+          onMouseEnter={() => setHover(i)}
+          onMouseLeave={() => setHover(0)}
+          onClick={() => onChange(i)}
+          className="focus:outline-none transition-transform hover:scale-110">
+          <Star size={28}
+            className={(hover || value) >= i
+              ? 'text-yellow-400 fill-yellow-400'
+              : 'text-zinc-300 dark:text-zinc-600'} />
+        </button>
+      ))}
+      <span className="ml-2 text-sm text-zinc-500 dark:text-zinc-400 font-medium">
+        {['','Poor','Fair','Good','Great','Excellent'][hover || value] || 'Select rating'}
+      </span>
+    </div>
+  );
+}
+
+function ReviewModal({ record, onClose, onSubmitted }) {
+  const [rating, setRating] = useState(0);
+  const [content, setContent] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!rating) { toast.error('Please select a star rating'); return; }
+    if (!content.trim()) { toast.error('Please write your review'); return; }
+    setSubmitting(true);
+    try {
+      await api.post('/testimonials', {
+        content,
+        rating,
+        lab_id: null,
+        session_record_id: record.id,
+        is_anonymous: isAnonymous,
+      });
+      toast.success('Review submitted!');
+      onSubmitted(record.id);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div className="bg-purple-500 px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-white font-semibold">Write a Review</p>
+            <p className="text-purple-200 text-xs mt-0.5">{record.purpose} · Lab {record.lab_room} · {fmtDate(record.date)}</p>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Your Rating *</label>
+            <StarPicker value={rating} onChange={setRating} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Your Review *</label>
+            <textarea
+              className="input resize-none text-sm w-full"
+              rows={4}
+              placeholder="Share your experience with this session..."
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              autoFocus
+            />
+            <p className="text-xs text-zinc-400 mt-1">{content.length}/500 characters</p>
+          </div>
+
+          {/* Anonymous toggle */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={isAnonymous}
+                onChange={e => setIsAnonymous(e.target.checked)}
+              />
+              <div className={`w-10 h-5 rounded-full transition-colors ${isAnonymous ? 'bg-purple-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isAnonymous ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Post anonymously</p>
+              <p className="text-xs text-zinc-400">Your name won't be shown publicly</p>
+            </div>
+          </label>
+        </div>
+        <div className="px-5 pb-5 flex justify-end gap-3">
+          <button onClick={onClose} className="btn-secondary px-5">Cancel</button>
+          <button onClick={handleSubmit} disabled={submitting || !rating || !content.trim()} className="btn-primary px-5">
+            <Star size={14} /> {submitting ? 'Submitting...' : 'Submit Review'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function StudentHistory() {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [reviewRecord, setReviewRecord] = useState(null);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 10;
+
+  useEffect(() => {
+    api.get('/sessions/my').then(r => setHistory(r.data)).finally(() => setLoading(false));
+  }, []);
+
+  const handleReviewSubmitted = (recordId) => {
+    setHistory(prev => prev.map(r => r.id===recordId ? {...r, review_submitted:1} : r));
+  };
+
+  const filtered = history.filter(r =>
+    r.purpose?.toLowerCase().includes(search.toLowerCase()) ||
+    r.lab_room?.toLowerCase().includes(search.toLowerCase()) ||
+    r.date?.includes(search)
+  );
+
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paginated  = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  return (
+    <StudentLayout>
+      <div className="max-w-5xl">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-zinc-900 dark:text-zinc-100">Session History</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">All your completed sit-in sessions</p>
+          </div>
+          <input className="input w-56" placeholder="Search by date, purpose..."
+            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-zinc-400">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="card text-center py-16 text-zinc-400">
+            <Clock className="mx-auto mb-3 opacity-30" size={40} />
+            <p className="font-medium">No sessions found</p>
+          </div>
+        ) : (
+          <div className="card p-0 overflow-hidden">
+            <div className="px-5 py-2.5 bg-zinc-50 dark:bg-zinc-700/50 border-b border-zinc-100 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400">
+              {filtered.length} record{filtered.length!==1?'s':''} found
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 dark:bg-zinc-700/50 border-b border-zinc-100 dark:border-zinc-700 dark:border-zinc-700">
+                <tr>
+                  {['Date','Time-in','Time-out','Duration','PC No.','Lab','Purpose','Status','Review'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-700/50">
+                {paginated.map(r => (
+                  <tr key={r.id} className="table-row-hover">
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{fmtDate(r.date)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-300">{fmtTime(r.time_in)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-300">{fmtTime(r.time_out)}</td>
+                    <td className="px-4 py-3 text-zinc-500 text-xs">{calcDuration(r.time_in,r.time_out)}</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{r.pc_number||'—'}</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{r.lab_room}</td>
+                    <td className="px-4 py-3"><span className="badge badge-purple">{r.purpose}</span></td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${
+                        r.status==='Completed'?'badge-green':
+                        r.status==='Terminated'?'badge-red':'badge-yellow'
+                      }`}>{r.status||'Completed'}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.review_submitted ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                          <CheckCircle size={13} /> Reviewed
+                        </span>
+                      ) : r.status === 'Completed' || !r.status ? (
+                        <button onClick={() => setReviewRecord(r)}
+                          className="inline-flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-medium hover:underline">
+                          <Star size={13} /> Write a Review
+                        </button>
+                      ) : (
+                        <span className="text-xs text-zinc-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {totalPages > 1 && (
+              <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-between">
+                <p className="text-xs text-zinc-400">
+                  {(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE,filtered.length)} of {filtered.length}
+                </p>
+                <div className="flex gap-1">
+                  <button onClick={() => setPage(p=>Math.max(1,p-1))} disabled={page===1}
+                    className="px-3 py-1 rounded-lg text-xs border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40">← Prev</button>
+                  {Array.from({length:totalPages},(_,i)=>i+1).map(p => (
+                    <button key={p} onClick={() => setPage(p)}
+                      className={`px-3 py-1 rounded-lg text-xs border transition-colors ${p===page?'bg-purple-500 text-white border-purple-500':'border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}>
+                      {p}
+                    </button>
+                  ))}
+                  <button onClick={() => setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}
+                    className="px-3 py-1 rounded-lg text-xs border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40">Next →</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {reviewRecord && (
+        <ReviewModal record={reviewRecord} onClose={() => setReviewRecord(null)} onSubmitted={handleReviewSubmitted} />
+      )}
+    </StudentLayout>
+  );
+}
