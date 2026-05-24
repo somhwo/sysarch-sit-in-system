@@ -1,25 +1,3 @@
 # Dependencies
 node_modules/
 
-# Environment variables — never commit these
-.env
-backend/.env
-frontend/.env
-
-# Build output
-frontend/dist/
-frontend/.vite/
-
-# Uploaded files
-backend/uploads/
-
-# SQLite (if ever used)
-backend/data/*.db
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
