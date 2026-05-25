@@ -51,12 +51,33 @@ router.get("/", authenticate, async (req, res) => {
   try {
     if (req.user.role === "admin") {
       const [rows] = await db.query(
-        `SELECT t.*, s.full_name, s.id_number, s.course, s.year_level,
-                l.name AS lab_name, l.room_number AS lab_room_number
+        `SELECT
+           t.id,
+           t.student_id,
+           t.content,
+           t.rating,
+           t.lab_id,
+           t.session_record_id,
+           t.is_anonymous,
+           t.is_approved,
+           t.created_at,
+           s.full_name,
+           s.id_number,
+           s.course,
+           s.year_level,
+           l.name        AS lab_name,
+           l.room_number AS lab_room_number,
+           r.lab_room    AS lab_room,
+           r.pc_number   AS pc_number,
+           r.purpose     AS purpose,
+           r.time_in     AS time_in,
+           r.time_out    AS time_out,
+           r.date        AS session_date
          FROM testimonials t
-         JOIN students s  ON t.student_id = s.id
-         LEFT JOIN labs l ON t.lab_id = l.id
-         WHERE t.is_approved = 1 ${typeFilter} ${labFilter}
+         JOIN students s            ON t.student_id        = s.id
+         LEFT JOIN labs l           ON t.lab_id            = l.id
+         LEFT JOIN sit_in_records r ON t.session_record_id = r.id
+         WHERE 1=1 ${typeFilter} ${labFilter}
          ORDER BY t.created_at DESC`,
         params
       );

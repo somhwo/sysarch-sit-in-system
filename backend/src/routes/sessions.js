@@ -188,8 +188,23 @@ router.post("/:id/end", requireAdmin, async (req, res) => {
     const now = new Date();
     const startedAt = new Date(session.started_at);
 
+    // Helper: format a Date as local YYYY-MM-DD (avoids UTC date being one day off in UTC+8)
+    const localDate = (d) => {
+      const yr  = d.getFullYear();
+      const mo  = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${yr}-${mo}-${day}`;
+    };
+    // Helper: format a Date as local HH:MM:SS
+    const localTime = (d) => {
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${hh}:${mm}:${ss}`;
+    };
+
     await db.query(
-      "UPDATE sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?",
+      "UPDATE sessions SET status = 'ended', ended_at = datetime('now', 'localtime') WHERE id = ?",
       [req.params.id]
     );
     await db.query(
@@ -208,9 +223,9 @@ router.post("/:id/end", requireAdmin, async (req, res) => {
         session.purpose,
         session.lab_room,
         session.pc_number,
-        startedAt.toISOString().split("T")[0],
-        startedAt.toTimeString().split(" ")[0],
-        now.toTimeString().split(" ")[0],
+        localDate(startedAt),
+        localTime(startedAt),
+        localTime(now),
       ]
     );
 
