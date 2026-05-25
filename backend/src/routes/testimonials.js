@@ -4,7 +4,7 @@ const { requireAdmin, authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
-// GET /api/testimonials/lab-ratings — must be before /:id
+// GET /api/testimonials/lab-ratings
 router.get("/lab-ratings", authenticate, async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -24,10 +24,29 @@ router.get("/lab-ratings", authenticate, async (req, res) => {
 });
 
 // GET /api/testimonials
+// ?type=lab      → only lab testimonials (lab_id IS NOT NULL, session_record_id IS NULL)
+// ?type=session  → only session reviews  (session_record_id IS NOT NULL)
+// ?lab_id=X      → filter by lab (for lab type)
+// no type        → defaults to lab for students, all for admin
 router.get("/", authenticate, async (req, res) => {
-  const { lab_id } = req.query;
-  const labFilter = lab_id ? "AND t.lab_id = ?" : "";
-  const params = lab_id ? [lab_id] : [];
+  const { lab_id, type } = req.query;
+  const params = [];
+
+  let typeFilter = "";
+  if (type === "lab") {
+    typeFilter = "AND t.lab_id IS NOT NULL AND t.session_record_id IS NULL";
+  } else if (type === "session") {
+    typeFilter = "AND t.session_record_id IS NOT NULL";
+  } else if (req.user.role === "student") {
+    // students always see only lab testimonials on this page
+    typeFilter = "AND t.lab_id IS NOT NULL AND t.session_record_id IS NULL";
+  }
+
+  let labFilter = "";
+  if (lab_id) {
+    labFilter = "AND t.lab_id = ?";
+    params.push(lab_id);
+  }
 
   try {
     if (req.user.role === "admin") {
@@ -37,13 +56,14 @@ router.get("/", authenticate, async (req, res) => {
          FROM testimonials t
          JOIN students s  ON t.student_id = s.id
          LEFT JOIN labs l ON t.lab_id = l.id
-         WHERE t.is_approved = 1 ${labFilter}
+         WHERE t.is_approved = 1 ${typeFilter} ${labFilter}
          ORDER BY t.created_at DESC`,
         params
       );
       return res.json(rows);
     }
 
+    // Student view — mask anonymous names
     const [rows] = await db.query(
       `SELECT t.id, t.rating, t.content, t.created_at, t.is_anonymous, t.lab_id,
               CASE WHEN t.is_anonymous = 1 THEN 'Anonymous' ELSE s.full_name END AS full_name,
@@ -52,7 +72,7 @@ router.get("/", authenticate, async (req, res) => {
        FROM testimonials t
        JOIN students s  ON t.student_id = s.id
        LEFT JOIN labs l ON t.lab_id = l.id
-       WHERE t.is_approved = 1 ${labFilter}
+       WHERE t.is_approved = 1 ${typeFilter} ${labFilter}
        ORDER BY t.created_at DESC`,
       params
     );
@@ -63,29 +83,50 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
-// POST /api/testimonials — student submits from session history
+// POST /api/testimonials — student submits a lab testimonial anytime
+// OR a session review from History page (session_record_id set)
 router.post("/", authenticate, async (req, res) => {
-  if (req.user.role !== "student") return res.status(403).json({ message: "Forbidden" });
+  if (req.user.role !== "student")
+    return res.status(403).json({ message: "Forbidden" });
+
   const { content, rating, lab_id, session_record_id, is_anonymous } = req.body;
-  if (!content?.trim()) return res.status(400).json({ message: "Content is required" });
+  if (!content?.trim())
+    return res.status(400).json({ message: "Content is required" });
+
+  // Lab testimonial requires a lab_id; session review requires session_record_id
+  if (!lab_id && !session_record_id)
+    return res.status(400).json({ message: "A lab or session must be specified" });
+
   const r = Math.min(5, Math.max(1, parseInt(rating) || 5));
 
   try {
+    // Prevent duplicate session reviews
     if (session_record_id) {
       const [existing] = await db.query(
         "SELECT id FROM testimonials WHERE student_id = ? AND session_record_id = ?",
         [req.user.id, session_record_id]
       );
-      if (existing.length > 0) {
+      if (existing.length > 0)
         return res.status(409).json({ message: "You already reviewed this session" });
-      }
+    }
+
+    // Prevent duplicate lab testimonials (one per lab per student)
+    if (lab_id && !session_record_id) {
+      const [existing] = await db.query(
+        "SELECT id FROM testimonials WHERE student_id = ? AND lab_id = ? AND session_record_id IS NULL",
+        [req.user.id, lab_id]
+      );
+      if (existing.length > 0)
+        return res.status(409).json({ message: "You already submitted a testimonial for this lab" });
     }
 
     await db.query(
-      "INSERT INTO testimonials (student_id, content, rating, lab_id, session_record_id, is_anonymous, is_approved) VALUES (?, ?, ?, ?, ?, ?, 1)",
+      `INSERT INTO testimonials
+         (student_id, content, rating, lab_id, session_record_id, is_anonymous, is_approved)
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
       [req.user.id, content.trim(), r, lab_id || null, session_record_id || null, is_anonymous ? 1 : 0]
     );
-    res.status(201).json({ message: "Review submitted" });
+    res.status(201).json({ message: "Testimonial submitted" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -96,7 +137,8 @@ router.post("/", authenticate, async (req, res) => {
 router.patch("/:id", requireAdmin, async (req, res) => {
   const { is_approved } = req.body;
   try {
-    await db.query("UPDATE testimonials SET is_approved = ? WHERE id = ?", [is_approved ? 1 : 0, req.params.id]);
+    await db.query("UPDATE testimonials SET is_approved = ? WHERE id = ?",
+      [is_approved ? 1 : 0, req.params.id]);
     res.json({ message: "Updated" });
   } catch (err) {
     console.error(err);

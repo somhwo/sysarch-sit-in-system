@@ -5,7 +5,14 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
 const COURSES = ['BSIT', 'BSCS', 'BSIS', 'ACT'];
+
+function getPhotoUrl(photo) {
+  if (!photo) return null;
+  if (photo.startsWith('http')) return photo;
+  return `${API_BASE}${photo}`;
+}
 
 export default function StudentProfile() {
   const { user, refreshUser } = useAuth();
@@ -60,6 +67,8 @@ export default function StudentProfile() {
     finally { setPhotoLoading(false); }
   };
 
+  const photoUrl = getPhotoUrl(user?.profile_photo);
+
   return (
     <StudentLayout>
       <div className="max-w-2xl">
@@ -72,9 +81,9 @@ export default function StudentProfile() {
         <div className="card mb-6 flex items-center gap-5">
           <div className="relative">
             <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-500 text-2xl font-display font-bold overflow-hidden">
-              {user?.profile_photo
-                ? <img src={user.profile_photo} alt="Profile" className="w-full h-full object-cover" />
-                : user?.full_name?.[0]
+              {photoUrl
+                ? <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
+                : user?.full_name?.[0]?.toUpperCase() ?? '?'
               }
             </div>
             <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-purple-600 transition-colors">

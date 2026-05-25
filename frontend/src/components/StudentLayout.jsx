@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, User, Clock, LogOut, Bell, CalendarDays, BarChart2, Monitor, Star, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, User, Clock, LogOut, Bell, CalendarDays, Monitor, Star, Sun, Moon, Trophy } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useAnnouncements } from "../context/AnnouncementContext";
 import { useTheme } from "../context/ThemeContext";
@@ -11,7 +11,7 @@ const links = [
   { to: "/student/profile",        icon: User,            label: "My Profile"                },
   { to: "/student/history",        icon: Clock,           label: "Session History"           },
   { to: "/student/reservation",    icon: CalendarDays,    label: "Reservation"               },
-  { to: "/student/analytics",      icon: BarChart2,       label: "My Analytics"              },
+  { to: "/student/leaderboard",    icon: Trophy,          label: "Leaderboard"               },
   { to: "/student/software",       icon: Monitor,         label: "Lab & Software"            },
   { to: "/student/testimonials",   icon: Star,            label: "Testimonials"              },
   { to: "/student/notifications",  icon: Bell,            label: "Notifications"             },

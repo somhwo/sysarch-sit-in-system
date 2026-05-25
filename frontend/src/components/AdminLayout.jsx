@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Users, PlayCircle, FileText,
+  LayoutDashboard, Users, FileText,
   LogOut, CalendarCheck, CalendarClock, MessageSquare, Monitor,
-  Sun, Moon, Star
+  Sun, Moon, Star, Trophy
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -12,10 +12,10 @@ import ccsLogo from "../images/ccs_logo.png";
 const links = [
   { to: "/admin",              icon: LayoutDashboard, label: "Dashboard",        end: true },
   { to: "/admin/students",     icon: Users,           label: "Students"                    },
-  { to: "/admin/sessions",     icon: PlayCircle,      label: "Sit-in Sessions"             },
   { to: "/admin/reservation",  icon: CalendarCheck,   label: "Sit-in Students"             },
   { to: "/admin/reservations", icon: CalendarClock,   label: "Reservations"                },
   { to: "/admin/records",      icon: FileText,        label: "Sit-in Records"              },
+  { to: "/admin/leaderboard",  icon: Trophy,          label: "Leaderboard"                 },
   { to: "/admin/feedback",     icon: MessageSquare,   label: "Feedback"                    },
   { to: "/admin/software",     icon: Monitor,         label: "Lab & Software"              },
   { to: "/admin/testimonials", icon: Star,            label: "Testimonials"                },
@@ -56,7 +56,6 @@ export default function AdminLayout({ children }) {
         </nav>
 
         <div className="p-3 border-t border-zinc-100 dark:border-zinc-700 space-y-1">
-          {/* Dark mode toggle */}
           <button
             onClick={toggleDarkMode}
             className="nav-link w-full text-zinc-500 dark:text-zinc-400"

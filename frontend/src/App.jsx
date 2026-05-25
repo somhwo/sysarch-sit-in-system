@@ -9,20 +9,20 @@ import StudentDashboard     from './pages/student/Dashboard';
 import StudentProfile       from './pages/student/Profile';
 import StudentHistory       from './pages/student/History';
 import StudentReservation   from './pages/student/Reservation';
-import StudentAnalytics     from './pages/student/Analytics';
 import StudentNotifications from './pages/student/Notifications';
 import StudentSoftware      from './pages/student/Software';
 import StudentTestimonials  from './pages/student/Testimonials';
+import StudentLeaderboard   from './pages/student/Leaderboard';
 
 import AdminDashboard        from './pages/admin/Dashboard';
 import AdminStudents         from './pages/admin/Students';
-import AdminSessions         from './pages/admin/Sessions';
 import AdminReservation      from './pages/admin/Reservation';
 import AdminViewReservations from './pages/admin/ViewReservations';
 import AdminRecords          from './pages/admin/Records';
 import AdminFeedback         from './pages/admin/Feedback';
 import AdminSoftware         from './pages/admin/Software';
 import AdminTestimonials     from './pages/admin/Testimonials';
+import AdminLeaderboard      from './pages/admin/Leaderboard';
 
 function PrivateRoute({ children, role }) {
   const { user, loading } = useAuth();
@@ -53,24 +53,26 @@ export default function App() {
       <Route path="/login"    element={user ? <Navigate to={user.role==='admin'?'/admin':'/student'} replace /> : <LoginPage />} />
       <Route path="/register" element={user ? <Navigate to="/student" replace /> : <RegisterPage />} />
 
-      <Route path="/student"                 element={<PrivateRoute role="student"><StudentDashboard /></PrivateRoute>} />
-      <Route path="/student/profile"         element={<PrivateRoute role="student"><StudentProfile /></PrivateRoute>} />
-      <Route path="/student/history"         element={<PrivateRoute role="student"><StudentHistory /></PrivateRoute>} />
-      <Route path="/student/reservation"     element={<PrivateRoute role="student"><StudentReservation /></PrivateRoute>} />
-      <Route path="/student/analytics"       element={<PrivateRoute role="student"><StudentAnalytics /></PrivateRoute>} />
-      <Route path="/student/notifications"   element={<PrivateRoute role="student"><StudentNotifications /></PrivateRoute>} />
-      <Route path="/student/software"        element={<PrivateRoute role="student"><StudentSoftware /></PrivateRoute>} />
-      <Route path="/student/testimonials"    element={<PrivateRoute role="student"><StudentTestimonials /></PrivateRoute>} />
+      <Route path="/student"               element={<PrivateRoute role="student"><StudentDashboard /></PrivateRoute>} />
+      <Route path="/student/profile"       element={<PrivateRoute role="student"><StudentProfile /></PrivateRoute>} />
+      <Route path="/student/history"       element={<PrivateRoute role="student"><StudentHistory /></PrivateRoute>} />
+      <Route path="/student/reservation"   element={<PrivateRoute role="student"><StudentReservation /></PrivateRoute>} />
+      <Route path="/student/analytics"     element={<PrivateRoute role="student"><Navigate to="/student/history" replace /></PrivateRoute>} />
+      <Route path="/student/notifications" element={<PrivateRoute role="student"><StudentNotifications /></PrivateRoute>} />
+      <Route path="/student/software"      element={<PrivateRoute role="student"><StudentSoftware /></PrivateRoute>} />
+      <Route path="/student/testimonials"  element={<PrivateRoute role="student"><StudentTestimonials /></PrivateRoute>} />
+      <Route path="/student/leaderboard"   element={<PrivateRoute role="student"><StudentLeaderboard /></PrivateRoute>} />
 
       <Route path="/admin"               element={<PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>} />
       <Route path="/admin/students"      element={<PrivateRoute role="admin"><AdminStudents /></PrivateRoute>} />
-      <Route path="/admin/sessions"      element={<PrivateRoute role="admin"><AdminSessions /></PrivateRoute>} />
+      <Route path="/admin/sessions"      element={<PrivateRoute role="admin"><Navigate to="/admin/reservation" replace /></PrivateRoute>} />
       <Route path="/admin/reservation"   element={<PrivateRoute role="admin"><AdminReservation /></PrivateRoute>} />
       <Route path="/admin/reservations"  element={<PrivateRoute role="admin"><AdminViewReservations /></PrivateRoute>} />
       <Route path="/admin/records"       element={<PrivateRoute role="admin"><AdminRecords /></PrivateRoute>} />
       <Route path="/admin/feedback"      element={<PrivateRoute role="admin"><AdminFeedback /></PrivateRoute>} />
       <Route path="/admin/software"      element={<PrivateRoute role="admin"><AdminSoftware /></PrivateRoute>} />
       <Route path="/admin/testimonials"  element={<PrivateRoute role="admin"><AdminTestimonials /></PrivateRoute>} />
+      <Route path="/admin/leaderboard"   element={<PrivateRoute role="admin"><AdminLeaderboard /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

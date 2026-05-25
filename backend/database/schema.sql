@@ -65,9 +65,10 @@ CREATE TABLE labs (
 );
 
 INSERT INTO labs (id, name, room_number, capacity, is_available, created_at) VALUES
-(1, 'Laboratory 1', '524', 30, 1, '2026-03-23 14:55:00'),
-(2, 'Laboratory 2', '530', 30, 1, '2026-03-23 14:55:00'),
-(3, 'Laboratory 3', '525', 25, 1, '2026-03-23 14:55:00');
+(1, 'Lab 524', '524', 50, 1, '2026-03-23 14:55:00'),
+(2, 'Lab 526', '526', 50, 1, '2026-03-23 14:55:00'),
+(3, 'Lab 528', '528', 50, 1, '2026-03-23 14:55:00'),
+(4, 'Lab 530', '530', 50, 1, '2026-03-23 14:55:00');
 
 CREATE TABLE software (
   id           INTEGER   PRIMARY KEY AUTOINCREMENT,
@@ -115,9 +116,9 @@ CREATE TABLE sit_in_records (
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
-INSERT INTO sit_in_records (id, student_id, session_id, id_number, full_name, purpose, lab_room, date, time_in, time_out, created_at) VALUES
-(1, 4, 1, '23778632', 'Samantha Singcol', 'C# Programming',  '524', '2026-03-23', '23:03:22', '23:03:28', '2026-03-23 15:03:28'),
-(2, 5, 2, '23778633', 'Luke Umpad',       'Java Programming', '530', '2026-03-23', '23:03:53', '23:03:59', '2026-03-23 15:03:59');
+INSERT INTO sit_in_records (id, student_id, session_id, id_number, full_name, purpose, lab_room, pc_number, date, time_in, time_out, created_at) VALUES
+(1, 4, 1, '23778632', 'Samantha Singcol', 'C# Programming',  '524', 'PC-01', '2026-03-23', '23:03:22', '23:03:28', '2026-03-23 15:03:28'),
+(2, 5, 2, '23778633', 'Luke Umpad',       'Java Programming', '530', 'PC-12', '2026-03-23', '23:03:53', '23:03:59', '2026-03-23 15:03:59');
 
 CREATE TABLE feedback (
   id           INTEGER   PRIMARY KEY AUTOINCREMENT,

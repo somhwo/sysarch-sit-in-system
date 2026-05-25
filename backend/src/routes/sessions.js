@@ -93,6 +93,40 @@ router.get("/stats", requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/sessions/leaderboard — top students by sit-in count
+router.get("/leaderboard", authenticate, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT
+         st.id,
+         st.id_number,
+         st.full_name,
+         st.course,
+         st.year_level,
+         st.profile_photo,
+         COUNT(r.id) AS total_sessions,
+         COUNT(DISTINCT r.lab_room) AS labs_visited,
+         COUNT(DISTINCT r.purpose) AS purposes_used,
+         MAX(r.date) AS last_session,
+         MIN(r.date) AS first_session,
+         (
+           SELECT r2.purpose FROM sit_in_records r2
+           WHERE r2.student_id = st.id
+           GROUP BY r2.purpose ORDER BY COUNT(*) DESC LIMIT 1
+         ) AS top_purpose
+       FROM students st
+       LEFT JOIN sit_in_records r ON r.student_id = st.id
+       GROUP BY st.id
+       ORDER BY total_sessions DESC
+       LIMIT 20`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // POST /api/sessions/start
 router.post("/start", requireAdmin, async (req, res) => {
   const { student_id, purpose, lab_room, pc_number } = req.body;

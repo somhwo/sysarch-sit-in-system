@@ -24,7 +24,6 @@ router.post("/", authenticate, async (req, res) => {
       return res.status(404).json({ message: "Session record not found" });
     }
 
-    // Check for duplicate (SQLite UNIQUE constraint on record_id)
     const [existing] = await db.query(
       "SELECT id FROM feedback WHERE record_id = ?",
       [record_id]
@@ -60,10 +59,13 @@ router.get("/", requireAdmin, async (req, res) => {
          r.lab_room,
          r.date        AS session_date,
          r.time_in,
-         r.time_out
+         r.time_out,
+         l.name        AS lab_name,
+         l.room_number AS lab_room_number
        FROM feedback f
        JOIN students s       ON f.student_id = s.id
        JOIN sit_in_records r ON f.record_id  = r.id
+       LEFT JOIN labs l      ON l.room_number = r.lab_room
        ORDER BY f.submitted_at DESC`
     );
     res.json(rows);
