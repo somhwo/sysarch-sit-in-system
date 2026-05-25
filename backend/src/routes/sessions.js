@@ -96,6 +96,7 @@ router.get("/stats", requireAdmin, async (req, res) => {
 // GET /api/sessions/leaderboard — top students by sit-in count
 router.get("/leaderboard", authenticate, async (req, res) => {
   try {
+    // Main rankings — INNER JOIN ensures only students with records appear
     const [rows] = await db.query(
       `SELECT
          st.id,
@@ -104,25 +105,41 @@ router.get("/leaderboard", authenticate, async (req, res) => {
          st.course,
          st.year_level,
          st.profile_photo,
-         COUNT(r.id) AS total_sessions,
+         COUNT(r.id)                AS total_sessions,
          COUNT(DISTINCT r.lab_room) AS labs_visited,
-         COUNT(DISTINCT r.purpose) AS purposes_used,
-         MAX(r.date) AS last_session,
-         MIN(r.date) AS first_session,
-         (
-           SELECT r2.purpose FROM sit_in_records r2
-           WHERE r2.student_id = st.id
-           GROUP BY r2.purpose ORDER BY COUNT(*) DESC LIMIT 1
-         ) AS top_purpose
+         COUNT(DISTINCT r.purpose)  AS purposes_used,
+         MAX(r.date)                AS last_session,
+         MIN(r.date)                AS first_session
        FROM students st
-       LEFT JOIN sit_in_records r ON r.student_id = st.id
-       GROUP BY st.id
-       ORDER BY total_sessions DESC
+       INNER JOIN sit_in_records r ON r.student_id = st.id
+       GROUP BY st.id, st.id_number, st.full_name, st.course, st.year_level, st.profile_photo
+       ORDER BY COUNT(r.id) DESC
        LIMIT 20`
     );
-    res.json(rows);
+
+    // Top purpose per student — using window function for reliable SQLite support
+    const [topPurposes] = await db.query(
+      `SELECT student_id, purpose AS top_purpose
+       FROM (
+         SELECT student_id, purpose,
+                ROW_NUMBER() OVER (
+                  PARTITION BY student_id
+                  ORDER BY COUNT(*) DESC
+                ) AS rn
+         FROM sit_in_records
+         GROUP BY student_id, purpose
+       )
+       WHERE rn = 1`
+    );
+
+    // Merge top_purpose into each row
+    const topMap = {};
+    topPurposes.forEach(t => { topMap[t.student_id] = t.top_purpose; });
+    const result = rows.map(r => ({ ...r, top_purpose: topMap[r.id] || null }));
+
+    res.json(result);
   } catch (err) {
-    console.error(err);
+    console.error("Leaderboard error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

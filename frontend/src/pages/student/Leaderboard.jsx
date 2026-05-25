@@ -49,9 +49,14 @@ export default function StudentLeaderboard() {
   const { user } = useAuth();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get('/sessions/leaderboard').then(r => setData(r.data)).finally(() => setLoading(false));
+    setError(null);
+    api.get('/sessions/leaderboard')
+      .then(r => setData(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setError('Failed to load leaderboard data. Please try again.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const myRank = data.findIndex(s => s.id_number === user?.id_number) + 1;
@@ -102,6 +107,12 @@ export default function StudentLeaderboard() {
 
         {loading ? (
           <div className="text-center py-20 text-zinc-400">Loading leaderboard...</div>
+        ) : error ? (
+          <div className="card text-center py-20 text-red-400">
+            <Trophy className="mx-auto mb-3 opacity-20" size={48} />
+            <p className="font-medium">{error}</p>
+            <p className="text-sm mt-1 text-zinc-400">Please try refreshing the page.</p>
+          </div>
         ) : data.length === 0 ? (
           <div className="card text-center py-20 text-zinc-400">
             <Trophy className="mx-auto mb-3 opacity-20" size={48} />
