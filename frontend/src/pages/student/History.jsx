@@ -149,7 +149,22 @@ export default function StudentHistory() {
   const PER_PAGE = 10;
 
   useEffect(() => {
-    api.get('/sessions/my').then(r => setHistory(r.data)).finally(() => setLoading(false));
+    api.get('/sessions/my').then(r => {
+      // Deduplicate: if multiple records share the same date + time_in, keep only the one with the highest id
+      const seen = new Map();
+      for (const record of r.data) {
+        const key = `${record.date}|${record.time_in}`;
+        if (!seen.has(key) || record.id < seen.get(key).id) {
+          seen.set(key, record);
+        }
+      }
+      // Preserve original ordering, skipping superseded duplicates
+      const deduped = r.data.filter(record => {
+        const key = `${record.date}|${record.time_in}`;
+        return seen.get(key).id === record.id;
+      });
+      setHistory(deduped);
+    }).finally(() => setLoading(false));
   }, []);
 
   const handleReviewSubmitted = (recordId) => {

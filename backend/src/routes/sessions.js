@@ -162,7 +162,7 @@ router.post("/start", requireAdmin, async (req, res) => {
     if (active.length > 0) return res.status(409).json({ message: "Student already has an active session" });
 
     const [result] = await db.query(
-      "INSERT INTO sessions (student_id, purpose, lab_room, pc_number, status) VALUES (?, ?, ?, ?, 'active')",
+      "INSERT INTO sessions (student_id, purpose, lab_room, pc_number, status, started_at) VALUES (?, ?, ?, ?, 'active', datetime('now', 'localtime'))",
       [student_id, purpose, lab_room, pc_number || null]
     );
     res.status(201).json({ message: "Session started", session_id: result.insertId });
@@ -188,18 +188,17 @@ router.post("/:id/end", requireAdmin, async (req, res) => {
     const now = new Date();
     const startedAt = new Date(session.started_at);
 
-    // Helper: format a Date as local YYYY-MM-DD (avoids UTC date being one day off in UTC+8)
+    // Use local timezone helpers — avoids UTC-offset date/time bugs in UTC+8
     const localDate = (d) => {
       const yr  = d.getFullYear();
-      const mo  = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${yr}-${mo}-${day}`;
+      const mo  = String(d.getMonth() + 1).padStart(2, '0');
+      const dy  = String(d.getDate()).padStart(2, '0');
+      return `${yr}-${mo}-${dy}`;
     };
-    // Helper: format a Date as local HH:MM:SS
     const localTime = (d) => {
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      const ss = String(d.getSeconds()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
       return `${hh}:${mm}:${ss}`;
     };
 
